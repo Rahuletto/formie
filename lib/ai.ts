@@ -28,7 +28,7 @@ export interface AnswerResponse {
   answer:
     | { id: number; answer: string; otherText?: string; selector?: string }
     | { id: number; answer: string; otherText?: string; selector?: string }[]
-    | null
+    | string
 }
 
 const googleAI = createGoogleGenerativeAI({
