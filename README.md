@@ -1,33 +1,74 @@
-This is a [Plasmo extension](https://docs.plasmo.com/) project bootstrapped with [`plasmo init`](https://www.npmjs.com/package/plasmo).
+# Autofillr
 
-## Getting Started
+A Chrome extension that uses AI to automatically fill out Google Forms
 
-First, run the development server:
+## Features
+
+- Detects forms automatically on Google Forms and Microsoft Forms
+- Extracts form structure, questions, and answer options
+- Uses Google's Gemini AI to intelligently answer form questions
+- Automatically fills out the form with AI-generated answers
+- Skips personal questions that should be answered by the user
+- Shows a preview of AI-generated answers before filling
+
+## Installation
+
+1. Clone this repository
+2. Install dependencies with `npm install` or `yarn install`
+3. Create a `.env` file in the root directory with your Google API key:
+   ```
+   PLASMO_PUBLIC_GOOGLE_API_KEY=your_google_api_key_here
+   ```
+4. Build the extension with `npm run build` or `yarn build`
+5. Load the extension in Chrome:
+   - Go to `chrome://extensions/`
+   - Enable "Developer mode"
+   - Click "Load unpacked"
+   - Select the `build/chrome-mv3-dev` directory
+
+## Usage
+
+1. Navigate to any Google Form or Microsoft Form
+2. Click on the Autofillr extension icon
+3. The extension will automatically extract the form structure
+4. Click "Autofill" to generate and fill answers
+5. Review the AI-generated answers in the extension popup
+6. If needed, click "Refill" to regenerate answers
+
+## Development
+
+This extension is built with:
+
+- [Plasmo](https://www.plasmo.com/) - Browser extension framework
+- [React](https://reactjs.org/) - UI library
+- [Tailwind CSS](https://tailwindcss.com/) - Styling
+- [Google AI SDK](https://ai.google.dev/) - AI integration with Gemini
+
+To start development:
 
 ```bash
-pnpm dev
-# or
 npm run dev
-```
-
-Open your browser and load the appropriate development build. For example, if you are developing for the chrome browser, using manifest v3, use: `build/chrome-mv3-dev`.
-
-You can start editing the popup by modifying `popup.tsx`. It should auto-update as you make changes. To add an options page, simply add a `options.tsx` file to the root of the project, with a react component default exported. Likewise to add a content page, add a `content.ts` file to the root of the project, importing some module and do some logic, then reload the extension on your browser.
-
-For further guidance, [visit our Documentation](https://docs.plasmo.com/)
-
-## Making production build
-
-Run the following:
-
-```bash
-pnpm build
 # or
-npm run build
+yarn dev
 ```
 
-This should create a production bundle for your extension, ready to be zipped and published to the stores.
+## Project Structure
 
-## Submit to the webstores
+- `popup.tsx` - Main extension popup
+- `lib/ai.ts` - AI integration with Gemini
+- `lib/formFiller.ts` - Form filling functionality
+- `lib/env.ts` - Environment configuration
 
-The easiest way to deploy your Plasmo extension is to use the built-in [bpp](https://bpp.browser.market) GitHub action. Prior to using this action however, make sure to build your extension and upload the first version to the store to establish the basic credentials. Then, simply follow [this setup instruction](https://docs.plasmo.com/framework/workflows/submit) and you should be on your way for automated submission!
+## License
+
+MIT
+
+## Credits
+
+Built with:
+
+- [Plasmo](https://www.plasmo.com/) - Browser Extension Framework
+- [React](https://reactjs.org/) - UI Library
+- [Tailwind CSS](https://tailwindcss.com/) - CSS Framework
+- [Gemini 2.5](https://ai.google.dev/) - AI model for generating responses
+- [AI SDK](https://github.com/vercel/ai) - AI integration toolkit

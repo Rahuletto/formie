@@ -172,7 +172,7 @@ function IndexPopup() {
 
   return (
     <main
-      className={`${processing ? "gradient-animation" : ""} overflow-y-auto h-[550px] w-[400px] relative bg-dark-bg`}>
+      className={`${processing ? "gradient-animation" : ""} overflow-y-auto min-h-[550px]  h-screen w-screen relative bg-dark-bg`}>
       <div className="absolute flex p-6 pb-8 px-8 flex-col h-full z-10">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-2xl font-semibold text-white">Scout</h1>

@@ -1,0 +1,44 @@
+{
+  "name": "Scout",
+  "description": "AI-powered form answer finder for Google and Microsoft Forms",
+  "version": "0.0.1",
+  "manifest_version": 3,
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Scout Forms with AI for answers"
+  },
+  "icons": {
+    "16": "assets/icon-16.png",
+    "32": "assets/icon-32.png",
+    "48": "assets/icon-48.png",
+    "128": "assets/icon-128.png"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs",
+    "contextMenus",
+    "sidePanel"
+  ],
+  "host_permissions": [
+    "https://*.google.com/forms/*",
+    "https://*.forms.office.com/*",
+    "https://*.microsoft.com/forms/*",
+    "https://*.docs.google.com/forms/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.google.com/forms/*",
+        "https://*.forms.office.com/*",
+        "https://*.microsoft.com/forms/*",
+        "https://*.docs.google.com/forms/*"
+      ],
+      "js": ["content.js"]
+    }
+  ]
+} 

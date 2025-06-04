@@ -1,0 +1,45 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&display=swap");
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  font-family: "Space Mono", monospace;
+}
+
+html,
+body {
+  background-color: #121212;
+}
+
+.gradient-animation {
+  box-shadow:
+    0 0 20px 6px #bb86fc44 inset,
+    0 0 40px 12px #bb86fc22,
+    0 0 80px 24px #bb86fc11;
+  animation: glow-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite alternate;
+}
+
+@keyframes glow-pulse {
+  0% {
+    box-shadow:
+      0 0 15px 4px #bb86fc44 inset,
+      0 0 30px 8px #bb86fc22,
+      0 0 60px 16px #bb86fc11;
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow:
+      0 0 25px 6px #bb86fc54 inset,
+      0 0 50px 16px #bb86fc32,
+      0 0 100px 32px #bb86fc21;
+    filter: brightness(1.05);
+  }
+  100% {
+    box-shadow:
+      0 0 30px 12px #bb86fc64 inset,
+      0 0 60px 24px #bb86fc42,
+      0 0 120px 50px #bb86fc31;
+    filter: brightness(1.1);
+  }
+}
