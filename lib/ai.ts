@@ -35,7 +35,9 @@ export interface AnswerResponse {
 const googleAI = createGoogleGenerativeAI({
   apiKey: GOOGLE_API_KEY
 })
-const model = googleAI("gemini-2.5-flash-preview-04-17")
+const model = googleAI("gemini-2.5-flash-preview-04-17", {
+  useSearchGrounding: true
+})
 
 export async function generateAnswers(
   formData: FormData
@@ -78,7 +80,6 @@ export async function generateAnswers(
   }
 }
 
-// Alternative function for simpler cases where you just want to add prompt parameter
 function createPrompt(formData: FormData): string {
   let prompt = `
 You are an AI assistant helping to fill out a form with the following structure:

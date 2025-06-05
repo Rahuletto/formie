@@ -5,7 +5,7 @@ import "./style.css"
 import { extractFormData } from "~lib/extract"
 
 import { generateAnswers } from "./lib/ai"
-import type { AnswerResponse, FormData } from "./lib/ai"
+import type { Answer, AnswerResponse, FormData } from "./lib/ai"
 
 export default function ScoutApp() {
   const [currentFormUrl, setCurrentFormUrl] = useState<string>("")
@@ -257,20 +257,13 @@ export default function ScoutApp() {
                                 const isSelected =
                                   answers.length > 0 &&
                                   answers[i] &&
-                                  answers[i].answer !== "SKIP" &&
                                   answers[i].answer !== null &&
                                   (Array.isArray(answers[i].answer)
-                                    ? (answers[i].answer as any[]).some(
-                                        (a: any) =>
-                                          (typeof a === "object"
-                                            ? a.answer
-                                            : a) === opt.text
+                                    ? (answers[i].answer as Answer[]).some(
+                                        (a: Answer) => a.answer === opt.text
                                       )
-                                    : typeof answers[i].answer === "object" &&
-                                        answers[i].answer !== null
-                                      ? (answers[i].answer as any).answer ===
-                                        opt.text
-                                      : String(answers[i].answer) === opt.text)
+                                    : (answers[i].answer as Answer)?.answer ===
+                                      opt.text)
 
                                 return (
                                   <div
@@ -303,20 +296,13 @@ export default function ScoutApp() {
                                 const isSelected =
                                   answers.length > 0 &&
                                   answers[i] &&
-                                  answers[i].answer !== "SKIP" &&
                                   answers[i].answer !== null &&
                                   (Array.isArray(answers[i].answer)
-                                    ? (answers[i].answer as any[]).some(
-                                        (a: any) =>
-                                          (typeof a === "object"
-                                            ? a.answer
-                                            : a) === opt.text
+                                    ? (answers[i].answer as Answer[]).some(
+                                        (a: Answer) => a.answer === opt.text
                                       )
-                                    : typeof answers[i].answer === "object" &&
-                                        answers[i].answer !== null
-                                      ? (answers[i].answer as any).answer ===
-                                        opt.text
-                                      : String(answers[i].answer) === opt.text)
+                                    : (answers[i].answer as Answer)?.answer ===
+                                      opt.text)
 
                                 return (
                                   <div
@@ -372,12 +358,14 @@ export default function ScoutApp() {
                             </div>
                           </div>
                         </div>
-                      ) : answers[i].answer && answers[i].answer.otherText ? (
+                      ) : answers[i].answer &&
+                        !Array.isArray(answers[i].answer) &&
+                        (answers[i].answer as Answer).otherText ? (
                         <div className="mt-5 p-2 px-4 bg-success/10 backdrop-blur-sm border border-success/20 rounded-xl shadow-md">
                           <div className="flex items-start space-x-3">
                             <div className="flex-1">
                               <p className="text-sm text-success/90 leading-relaxed">
-                                {answers[i].answer.otherText}
+                                {(answers[i].answer as Answer).otherText}
                               </p>
                             </div>
                           </div>
@@ -389,33 +377,22 @@ export default function ScoutApp() {
                               <div className="flex-1">
                                 <p className="text-sm text-success/90 leading-relaxed">
                                   {Array.isArray(answers[i].answer)
-                                    ? (
-                                        answers[i].answer as {
-                                          id: number
-                                          answer: string
-                                          otherText?: string
-                                        }[]
-                                      )
+                                    ? (answers[i].answer as Answer[])
                                         .map((a) =>
                                           a.otherText
                                             ? `${a.answer}: ${a.otherText}`
                                             : a.answer
                                         )
                                         .join(", ")
-                                    : typeof answers[i].answer === "object" &&
-                                        answers[i].answer !== null
+                                    : answers[i].answer !== null
                                       ? (() => {
                                           const answerObj = answers[i]
-                                            .answer as {
-                                            id: number
-                                            answer: string
-                                            otherText?: string
-                                          }
+                                            .answer as Answer
                                           return answerObj.otherText
                                             ? `${answerObj.answer}: ${answerObj.otherText}`
                                             : answerObj.answer
                                         })()
-                                      : String(answers[i].answer)}
+                                      : ""}
                                 </p>
                               </div>
                             </div>
