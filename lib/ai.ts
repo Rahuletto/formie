@@ -22,12 +22,14 @@ export interface FormData {
   questions: FormQuestion[]
 }
 
+export interface Answer {
+  id: number
+  answer: string
+  otherText?: string
+}
 export interface AnswerResponse {
   questionId: number
-  answer:
-    | { id: number; answer: string; otherText?: string; selector?: string }
-    | { id: number; answer: string; otherText?: string; selector?: string }[]
-    | string
+  answer: Answer | Answer[]
 }
 
 const googleAI = createGoogleGenerativeAI({

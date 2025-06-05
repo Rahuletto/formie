@@ -74,7 +74,7 @@ module.exports = {
           secondary: '#03DAC6',
           error: '#CF6679',
         },
-        success: '#008000',
+        success: '#42AB5D',
       },
     },
   },

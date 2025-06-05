@@ -1,32 +1,4 @@
 export function extractFormData() {
-  function extractImageDataUrl(imageElement: HTMLImageElement): string | null {
-    return imageElement.src
-    try {
-      if (!imageElement.complete || !imageElement.naturalWidth) {
-        return null
-      }
-
-      const canvas = document.createElement("canvas")
-      const ctx = canvas.getContext("2d")
-
-      if (!ctx) return imageElement.src
-
-      canvas.width = imageElement.naturalWidth
-      canvas.height = imageElement.naturalHeight
-
-      try {
-        ctx.drawImage(imageElement, 0, 0)
-        return canvas.toDataURL("image/png")
-      } catch (securityError) {
-        console.warn("Cannot extract image due to CORS policy:", securityError)
-        return imageElement.src
-      }
-    } catch (error) {
-      console.error("Error extracting image data URL:", error)
-      return imageElement.src
-    }
-  }
-
   try {
     const formData = {
       title: "",
@@ -50,9 +22,17 @@ export function extractFormData() {
 
     const numberedQuestions = Array.from(
       document.querySelectorAll(
-        '.freebirdFormviewerViewNumberedItemContainer, .m3kCof, [role="list"] > [role="listitem"]'
+        ".freebirdFormviewerViewNumberedItemContainer, .m2RWDe, .Qr7Oae"
       )
-    )
+    ).filter((container) => {
+      const hasQuestionTitle = container.querySelector(
+        ".freebirdFormviewerViewItemsItemItemTitle, .m7w28, [role='heading'], .freebirdFormviewerComponentsQuestionBaseTitle, .M0HnIe, .z6Bv3b"
+      )
+      const hasInputElements = container.querySelector(
+        'input, textarea, select, [role="radio"], [role="checkbox"], [role="listbox"]'
+      )
+      return hasQuestionTitle || hasInputElements
+    })
 
     numberedQuestions.forEach((container, index) => {
       const questionFull = container.textContent.trim()
@@ -128,7 +108,7 @@ export function extractFormData() {
 
         if (questionType === "multiple_choice" || questionType === "checkbox") {
           const optionLabels = container.querySelectorAll(
-            '.docssharedWizToggleLabeledLabelText, .ulDsOb, [role="radio"], [role="checkbox"], .nWQGrd, .oyXaNc'
+            ".docssharedWizToggleLabeledLabelText, .ulDsOb, .nWQGrd, .oyXaNc"
           )
 
           optionLabels.forEach((opt, idx) => {
@@ -146,6 +126,27 @@ export function extractFormData() {
               }
             }
           })
+
+          if (options.length === 0) {
+            const alternativeOptionLabels = container.querySelectorAll(
+              '[role="radio"] .SG0AAe, [role="checkbox"] .SG0AAe, .d7L4fc'
+            )
+            alternativeOptionLabels.forEach((opt, idx) => {
+              if (opt) {
+                const optText = opt.textContent.trim()
+                if (
+                  optText &&
+                  !options.some(
+                    (o) =>
+                      o.text.trim().replace(/\s+/g, " ") ===
+                      optText.trim().replace(/\s+/g, " ")
+                  )
+                ) {
+                  options.push({ id: idx, text: optText })
+                }
+              }
+            })
+          }
         } else if (questionType === "dropdown") {
           const selectElement = container.querySelector("select")
           if (selectElement) {
@@ -200,7 +201,7 @@ export function extractFormData() {
       const imageElement = container.querySelector("img")
       let imageUrl = null
       if (imageElement) {
-        imageUrl = extractImageDataUrl(imageElement)
+        imageUrl = imageElement.src
         console.log(`Found image in question ${index + 1}: ${imageUrl}`)
       }
 
@@ -215,9 +216,16 @@ export function extractFormData() {
     })
 
     if (formData.questions.length === 0) {
-      const questionContainers = document.querySelectorAll(
-        '[role="listitem"], .freebirdFormviewerViewNumberedItemContainer'
-      )
+      const questionContainers = Array.from(
+        document.querySelectorAll(
+          '[role="listitem"], .freebirdFormviewerViewNumberedItemContainer'
+        )
+      ).filter((container) => {
+        const hasQuestionTitle = container.querySelector(
+          ".freebirdFormviewerViewItemsItemItemTitle, .m7w28, [role='heading'], .freebirdFormviewerComponentsQuestionBaseTitle"
+        )
+        return hasQuestionTitle !== null
+      })
 
       questionContainers.forEach((container, index) => {
         const questionElement = container.querySelector(
@@ -263,7 +271,7 @@ export function extractFormData() {
         const imageElement = container.querySelector("img")
         let imageUrl = null
         if (imageElement) {
-          imageUrl = extractImageDataUrl(imageElement)
+          imageUrl = imageElement.src
           console.log(`Found image in question ${index + 1}: ${imageUrl}`)
         }
 
@@ -312,9 +320,17 @@ export function extractFormData() {
       })
 
       if (formData.questions.length === 0) {
-        const newQuestionContainers = document.querySelectorAll(
-          ".geS5n, .o3Dpx, .Qr7Oae"
-        )
+        const newQuestionContainers = Array.from(
+          document.querySelectorAll(".geS5n, .o3Dpx, .Qr7Oae")
+        ).filter((container) => {
+          const hasQuestionTitle = container.querySelector(
+            '.M0HnIe, .z6Bv3b, [role="heading"]'
+          )
+          const hasInputs = container.querySelector(
+            'input, textarea, select, [role="radio"], [role="checkbox"], [role="listbox"]'
+          )
+          return hasQuestionTitle || hasInputs
+        })
 
         newQuestionContainers.forEach(async (container, index) => {
           const questionText =
@@ -323,8 +339,7 @@ export function extractFormData() {
               ?.textContent?.trim() || `Question ${index + 1}`
 
           const isMultipleChoice =
-            container.querySelectorAll('[role="radio"] .SG0AAe .nWQGrd')
-              .length > 0
+            container.querySelectorAll('[role="radio"]').length > 0
           const isCheckbox =
             container.querySelectorAll('[role="checkbox"], .Y6Myld').length > 0
 
@@ -335,7 +350,7 @@ export function extractFormData() {
           const imageElement = container.querySelector("img")
           let imageUrl = null
           if (imageElement) {
-            imageUrl = extractImageDataUrl(imageElement)
+            imageUrl = imageElement.src
 
             console.log(`Found image in question ${index + 1}: ${imageUrl}`)
             console.log("imageUrl", imageUrl)
@@ -355,10 +370,16 @@ export function extractFormData() {
 
           if (isMultipleChoice || isCheckbox) {
             const optionElements = container.querySelectorAll(
-              '[role="radio"], [role="checkbox"], .SG0AAe .nWQGrd, .d7L4fc'
+              '[role="radio"] .SG0AAe, [role="checkbox"] .SG0AAe, .nWQGrd, .d7L4fc'
             )
             optionElements.forEach((opt, idx) => {
-              question.options.push({ id: idx, text: opt.textContent.trim() })
+              const optText = opt.textContent.trim()
+              if (
+                optText &&
+                !question.options.some((o) => o.text === optText)
+              ) {
+                question.options.push({ id: idx, text: optText })
+              }
             })
           }
 
