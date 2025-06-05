@@ -14,8 +14,7 @@ export default function ScoutApp() {
   const [formData, setFormData] = useState<FormData>({
     title: "",
     description: "",
-    questions: [],
-    answers: ""
+    questions: []
   })
   const [loading, setLoading] = useState<boolean>(false)
   const [processing, setProcessing] = useState<boolean>(false)
@@ -76,7 +75,7 @@ export default function ScoutApp() {
             setError(chrome.runtime.lastError.message)
           }
 
-          if (results && results[0] && results[0].result) {
+          if (results && results[0].result) {
             setFormData(results[0].result)
           } else {
             setError("No form data found")
@@ -197,77 +196,86 @@ export default function ScoutApp() {
               {formData.questions.map((q, i) => (
                 <div
                   key={i}
-                  className="mb-3 py-3 px-5 bg-dark-surface/40 w-full rounded-xl">
-                  <p className="font-medium text-base">
-                    {q.required
-                      ? q.text.replace("*", "").trim()
-                      : q.text.trim()}{" "}
-                    <span className="text-dark-error text-xs relative -top-1">
-                      {q.required ? "*" : ""}
-                    </span>
-                  </p>
-                  <p className="text-gray-400 text-sm">Type: {q.type}</p>
-                  {q.options && q.options.length > 0 && (
-                    <div className="ml-4 mt-1">
-                      <p className="text-sm text-gray-400">Options:</p>
-                      <ul className="list-disc ml-4">
-                        {q.type === "multiple_choice"
-                          ? q.options.slice(1).map((opt, j) => (
-                              <li key={j} className="text-sm">
-                                {opt.text}
-                              </li>
-                            ))
-                          : q.options.map((opt, j) => (
-                              <li key={j} className="text-sm">
-                                {opt.text}
-                              </li>
-                            ))}
-                      </ul>
-                    </div>
+                  className="mb-3 p-3 bg-dark-surface/40 w-full rounded-xl">
+                  {q.image && (
+                    <img
+                      src={q.image}
+                      alt="Question Image"
+                      className="w-full h-auto mb-2 rounded-md "
+                    />
                   )}
-                  {answers.length > 0 &&
-                    answers[i] &&
-                    (answers[i].answer === "SKIP" ||
-                    answers[i].answer === null ||
-                    (answers[i].answer as any)?.answer === "SKIP" ? (
-                      <div className="mt-4 p-2 bg-orange-500/10 rounded-lg px-6">
-                        <p className="text-sm font-semibold text-orange-500">
-                          Skipped (personal question)
-                        </p>
+                  <div className="px-2">
+                    <p className="font-medium text-base">
+                      {q.required
+                        ? q.text.replace("*", "").trim()
+                        : q.text.trim()}{" "}
+                      <span className="text-dark-error text-xs relative -top-1">
+                        {q.required ? "*" : ""}
+                      </span>
+                    </p>
+                    <p className="text-gray-400 text-sm">Type: {q.type}</p>
+                    {q.options && q.options.length > 0 && (
+                      <div className="ml-4 mt-1">
+                        <p className="text-sm text-gray-400">Options:</p>
+                        <ul className="list-disc ml-4">
+                          {q.type === "multiple_choice"
+                            ? q.options.slice(1).map((opt, j) => (
+                                <li key={j} className="text-sm">
+                                  {opt.text}
+                                </li>
+                              ))
+                            : q.options.map((opt, j) => (
+                                <li key={j} className="text-sm">
+                                  {opt.text}
+                                </li>
+                              ))}
+                        </ul>
                       </div>
-                    ) : (
-                      <div className="mt-4 p-2 bg-success/10 rounded-lg px-6">
-                        <p className="text-sm font-semibold text-success">
-                          {Array.isArray(answers[i].answer)
-                            ? (
-                                answers[i].answer as {
-                                  id: number
-                                  answer: string
-                                  otherText?: string
-                                }[]
-                              )
-                                .map((a) =>
-                                  a.otherText
-                                    ? `${a.answer}: ${a.otherText}`
-                                    : a.answer
-                                )
-                                .join(", ")
-                            : typeof answers[i].answer === "object" &&
-                                answers[i].answer !== null
-                              ? (() => {
-                                  const answerObj = answers[i].answer as {
+                    )}
+                    {answers.length > 0 &&
+                      answers[i] &&
+                      (answers[i].answer === "SKIP" ||
+                      answers[i].answer === null ||
+                      (answers[i].answer as any)?.answer === "SKIP" ? (
+                        <div className="mt-4 p-2 bg-orange-500/10 rounded-lg px-6">
+                          <p className="text-sm font-semibold text-orange-500">
+                            Skipped (personal question)
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="mt-4 p-2 bg-success/10 rounded-lg px-6">
+                          <p className="text-sm font-semibold text-success">
+                            {Array.isArray(answers[i].answer)
+                              ? (
+                                  answers[i].answer as {
                                     id: number
                                     answer: string
                                     otherText?: string
-                                  }
-                                  return answerObj.otherText
-                                    ? `${answerObj.answer}: ${answerObj.otherText}`
-                                    : answerObj.answer
-                                })()
-                              : String(answers[i].answer)}
-                        </p>
-                      </div>
-                    ))}
+                                  }[]
+                                )
+                                  .map((a) =>
+                                    a.otherText
+                                      ? `${a.answer}: ${a.otherText}`
+                                      : a.answer
+                                  )
+                                  .join(", ")
+                              : typeof answers[i].answer === "object" &&
+                                  answers[i].answer !== null
+                                ? (() => {
+                                    const answerObj = answers[i].answer as {
+                                      id: number
+                                      answer: string
+                                      otherText?: string
+                                    }
+                                    return answerObj.otherText
+                                      ? `${answerObj.answer}: ${answerObj.otherText}`
+                                      : answerObj.answer
+                                  })()
+                                : String(answers[i].answer)}
+                          </p>
+                        </div>
+                      ))}
+                  </div>
                 </div>
               ))}
             </div>

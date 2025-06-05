@@ -13,14 +13,13 @@ export interface FormQuestion {
     text: string
     selector?: string
   }[]
-  inputSelector?: string
+  image?: string
 }
 
 export interface FormData {
   title: string
   description: string
   questions: FormQuestion[]
-  answers: string
 }
 
 export interface AnswerResponse {
@@ -48,7 +47,12 @@ export async function generateAnswers(
 
     const result = await generateText({
       model,
-      prompt
+      messages: [
+        {
+          role: "user",
+          content: [{ type: "text", text: prompt }]
+        }
+      ]
     })
 
     console.log("AI Response:", result.text)
@@ -60,7 +64,8 @@ export async function generateAnswers(
         id: q.id,
         text: q.text,
         type: q.type,
-        options: q.options
+        options: q.options,
+        hasImage: !!q.image
       }))
     )
 
@@ -71,6 +76,7 @@ export async function generateAnswers(
   }
 }
 
+// Alternative function for simpler cases where you just want to add prompt parameter
 function createPrompt(formData: FormData): string {
   let prompt = `
 You are an AI assistant helping to fill out a form with the following structure:
@@ -95,7 +101,12 @@ Here are the questions:
 `
 
   formData.questions.forEach((question, index) => {
-    prompt += JSON.stringify(question)
+    const questionCopy = { ...question }
+    if (questionCopy.image) {
+      questionCopy.text += ` [IMAGE URL: ${questionCopy.image} - analyze this image to answer the question]`
+      delete questionCopy.image
+    }
+    prompt += JSON.stringify(questionCopy, null, 2) + "\n\n"
   })
 
   prompt += `
@@ -180,12 +191,10 @@ function parseAIResponse(
             answer: {
               id: -1,
               answer: answer,
-              otherText: answer,
-              selector: question.inputSelector || ""
+              otherText: answer
             }
           })
         } else {
-          // For multiple choice, checkbox, and dropdown, find matching option
           console.log(
             `Looking for option "${answer}" in question ${question.id} options:`,
             question.options
