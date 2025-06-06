@@ -1,0 +1,73 @@
+name: "Manual Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version (e.g., v1.0.0)"
+        required: true
+        type: string
+      release_notes:
+        description: "Release notes (optional)"
+        required: false
+        type: string
+        default: "Manual release"
+
+jobs:
+  manual-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build the extension
+        run: bun run build
+
+      - name: Package the extension
+        run: bun run package
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.event.inputs.version }}
+          release_name: Formie ${{ github.event.inputs.version }}
+          body: |
+            ## Formie ${{ github.event.inputs.version }}
+
+            ### Installation Instructions
+            1. Download the `formie-extension.zip` file below
+            2. Extract the zip file
+            3. Open Chrome and go to `chrome://extensions/`
+            4. Enable "Developer mode" in the top right
+            5. Click "Load unpacked" and select the extracted folder
+
+            ### Changes
+            ${{ github.event.inputs.release_notes }}
+
+            ---
+            **Note**: This extension is not available on Chrome Web Store due to policy restrictions.
+          draft: false
+          prerelease: false
+
+      - name: Upload Chrome Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./build/chrome-mv3-prod.zip
+          asset_name: formie-extension.zip
+          asset_content_type: application/zip

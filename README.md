@@ -21,6 +21,10 @@ It can handle surveys, applications, or any other type of form on Google Forms. 
 - [ ] Microsoft Forms (`forms.office.com`)
 - [ ] Microsoft 365 Forms (`forms.microsoft.com`)
 
+## Screenshots
+![alt text](assets/readme/extension.png)
+![alt text](assets/readme/sidepanel.png)
+
 ## Installation
 
 ### For Development
