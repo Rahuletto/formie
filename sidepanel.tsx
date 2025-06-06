@@ -1,10 +1,11 @@
-import React from 'react'
-import ScoutApp from '~ScoutApp'
+import React from "react"
+
+import FormieApp from "./FormieApp"
 
 export default function sidepanel() {
   return (
     <main className={`h-screen w-screen`}>
-      <ScoutApp />
+      <FormieApp />
     </main>
   )
 }

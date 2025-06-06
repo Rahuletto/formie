@@ -1,74 +1,68 @@
-# Autofillr
+# Formie
 
-A Chrome extension that uses AI to automatically fill out Google Forms
+Formie is an AI powered browser extension to automatically ~fill out forms for you~ generate answers for the form.
+It can handle surveys, applications, or any other type of form on Google Forms. Formie can analyze the questions and provide intelligent answers to save you time.
 
-## Features
+## TODO
 
-- Detects forms automatically on Google Forms and Microsoft Forms
-- Extracts form structure, questions, and answer options
-- Uses Google's Gemini AI to intelligently answer form questions
-- Automatically fills out the form with AI-generated answers
-- Skips personal questions that should be answered by the user
-- Shows a preview of AI-generated answers before filling
+- [x] **Analyzes form questions** - Formie extracts and reads through all the questions on a form
+- [x] **Generate answers** - Using Gemini, it creates appropriate responses based on the question type and context
+- [x] **Sidebar integration** - Allows to open the extension in sidebar to fill the form with ease
+- [ ] **Fill the form automatically** - Formie can fill the entire form with answers
+- [ ] **Personal Information** - Formie understands you with your personal information to fill such personal questions
+- [ ] **Prompt Injection** - Give user control over the answers with prompt injection
+- [ ] **Custom API key** - Formie can use the custom api key from users instead
+- [ ] **Model Selection** - Allows users to opt in to Gemini, ChatGPT or Claude as their wish.
+
+## Supported Platforms
+
+- [x] Google Forms (`forms.google.com`)
+- [x] Google Docs Forms (`docs.google.com/forms`)
+- [ ] Microsoft Forms (`forms.office.com`)
+- [ ] Microsoft 365 Forms (`forms.microsoft.com`)
 
 ## Installation
 
-1. Clone this repository
-2. Install dependencies with `npm install` or `yarn install`
-3. Create a `.env` file in the root directory with your Google API key:
+### For Development
+
+1. **Clone this repository**
+
+   ```bash
+   git clone https://github.com/rahuletto/formie
+   cd Formie
    ```
-   PLASMO_PUBLIC_GOOGLE_API_KEY=your_google_api_key_here
+
+2. **Install dependencies**
+
+   ```bash
+   bun install
    ```
-4. Build the extension with `npm run build` or `yarn build`
-5. Load the extension in Chrome:
-   - Go to `chrome://extensions/`
+
+3. **Build the extension**
+
+   ```bash
+   bun run build
+   ```
+
+4. **Load in your browser**
+   - Open Chrome/Edge and go to `chrome://extensions/`
    - Enable "Developer mode"
-   - Click "Load unpacked"
-   - Select the `build/chrome-mv3-dev` directory
+   - Click "Load unpacked" and select the `build` folder
 
-## Usage
+> [!IMPORTANT]
+> The extension will **not** be available on the Chrome Web Store or Edge Add-ons store as this can violate their T&C.
 
-1. Navigate to any Google Form or Microsoft Form
-2. Click on the Autofillr extension icon
-3. The extension will automatically extract the form structure
-4. Click "Autofill" to generate and fill answers
-5. Review the AI-generated answers in the extension popup
-6. If needed, click "Refill" to regenerate answers
+## Privacy & Security
 
-## Development
+- Formie only works on form pages you explicitly visit
+- No personal data is stored permanently
+- All AI processing is done by Google and subjected to their [Privacy](https://support.google.com/gemini/answer/13594961?hl=en#privacy_notice)
+- The extension only has access to form pages, not your entire browsing
 
-This extension is built with:
+## Support
 
-- [Plasmo](https://www.plasmo.com/) - Browser extension framework
-- [React](https://reactjs.org/) - UI library
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [Google AI SDK](https://ai.google.dev/) - AI integration with Gemini
+Having issues or questions? Feel free to open an issue on GitHub or reach out on any platform.
 
-To start development:
 
-```bash
-npm run dev
-# or
-yarn dev
-```
-
-## Project Structure
-
-- `popup.tsx` - Main extension popup
-- `lib/ai.ts` - AI integration with Gemini
-- `lib/formFiller.ts` - Form filling functionality
-- `lib/env.ts` - Environment configuration
-
-## License
-
-MIT
-
-## Credits
-
-Built with:
-
-- [Plasmo](https://www.plasmo.com/) - Browser Extension Framework
-- [React](https://reactjs.org/) - UI Library
-- [Tailwind CSS](https://tailwindcss.com/) - CSS Framework
-- [Gemini 2.5](https://ai.google.dev/) - AI model for generating responses
-- [AI SDK](https://github.com/vercel/ai) - AI integration toolkit
+## License 
+This extension uses MIT License

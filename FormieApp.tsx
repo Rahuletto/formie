@@ -7,7 +7,7 @@ import { extractFormData } from "~lib/extract"
 import { generateAnswers } from "./lib/ai"
 import type { Answer, AnswerResponse, FormData } from "./lib/ai"
 
-export default function ScoutApp() {
+export default function FormieApp() {
   const [currentFormUrl, setCurrentFormUrl] = useState<string>("")
   const [isFormUrl, setIsFormUrl] = useState<boolean>(false)
   const [error, setError] = useState<string>("")
@@ -166,7 +166,7 @@ export default function ScoutApp() {
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center space-x-3">
             <h1 className="text-3xl font-bold text-white tracking-tight">
-              Scout
+              Formie
             </h1>
           </div>
           {(formData.questions.length > 0 || answers.length > 0) && (

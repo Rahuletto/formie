@@ -1,7 +1,7 @@
 {
-  "name": "scout",
-  "displayName": "Scout",
-  "version": "0.0.1",
+  "name": "formie",
+  "displayName": "Formie",
+  "version": "1.0.0",
   "description": "Agents filling google forms",
   "author": "marban",
   "scripts": {
