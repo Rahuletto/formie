@@ -22,8 +22,10 @@ It can handle surveys, applications, or any other type of form on Google Forms. 
 - [ ] Microsoft 365 Forms (`forms.microsoft.com`)
 
 ## Screenshots
-![alt text](assets/readme/extension.png)
-![alt text](assets/readme/sidepanel.png)
+
+| Extension                                | Sidebar                                  |
+| ---------------------------------------- | ---------------------------------------- |
+| ![alt text](assets/readme/extension.png) | ![alt text](assets/readme/sidepanel.png) |
 
 ## Installation
 
@@ -67,6 +69,6 @@ It can handle surveys, applications, or any other type of form on Google Forms. 
 
 Having issues or questions? Feel free to open an issue on GitHub or reach out on any platform.
 
+## License
 
-## License 
 This extension uses MIT License
