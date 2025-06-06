@@ -1,11 +1,30 @@
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 
 import "./style.css"
 
+import { AiFillAlert } from "react-icons/ai"
+import { RxReload } from "react-icons/rx"
+
+import { autoFillAnswer } from "~lib/autofill"
 import { extractFormData } from "~lib/extract"
 
 import { generateAnswers } from "./lib/ai"
-import type { Answer, AnswerResponse, FormData } from "./lib/ai"
+import type { Answer, AnswerResponse } from "./types/Answer"
+import type { FormData } from "./types/Form"
+
+
+const FORM_URL_PATTERNS = [
+  /forms\.google\.com/,
+  /forms\.office\.com/,
+  /forms\.microsoft\.com/,
+  /docs\.google\.com\/forms/,
+  /docs\.google\.com\/.*\/forms\/.*/,
+  /docs\.google\.com\/.*\/viewform.*/,
+  /forms\.gle\//
+]
+
+const FORM_SELECTORS =
+  'form, [role="form"], .freebirdFormviewerViewFormCard, .m3kCof'
 
 export default function FormieApp() {
   const [currentFormUrl, setCurrentFormUrl] = useState<string>("")
@@ -16,148 +35,291 @@ export default function FormieApp() {
     description: "",
     questions: []
   })
-  const [loading, setLoading] = useState<boolean>(false)
   const [processing, setProcessing] = useState<boolean>(false)
   const [answers, setAnswers] = useState<AnswerResponse[]>([])
 
   useEffect(() => {
-    chrome.storage.local.get(
-      ["formData", "answers", "currentFormUrl"],
-      (result) => {
-        if (result.formData) {
-          setFormData(result.formData)
-        }
-        if (result.answers) {
-          setAnswers(result.answers)
-        }
-        if (result.currentFormUrl) {
-          setCurrentFormUrl(result.currentFormUrl)
-        }
-      }
-    )
+    if (processing) {
+      setError("")
+      clearData()
+    }
+  }, [processing])
 
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const url = tabs[0].url
-      setCurrentFormUrl(url)
+  
+  const hasFormData = useMemo(
+    () => formData.questions.length > 0,
+    [formData.questions.length]
+  )
 
-      chrome.storage.local.set({ currentFormUrl: url })
+  const hasAnswers = useMemo(() => answers.length > 0, [answers.length])
+
+  const isFormUrlValid = useMemo(
+    () => FORM_URL_PATTERNS.some((pattern) => pattern.test(currentFormUrl)),
+    [currentFormUrl]
+  )
+
+  
+  const chromeStorageSet = useCallback((data: Record<string, any>) => {
+    return new Promise<void>((resolve) => {
+      chrome.storage.local.set({ ...data, timestamp: Date.now() }, resolve)
     })
   }, [])
 
-  useEffect(() => {
-    if (formData.questions.length > 0) {
-      chrome.storage.local.set({
-        formData: formData,
-        timestamp: Date.now()
-      })
-    }
-  }, [formData])
-
-  useEffect(() => {
-    if (answers.length > 0) {
-      chrome.storage.local.set({
-        answers: answers,
-        timestamp: Date.now()
-      })
-    }
-  }, [answers])
-
-  function extractData() {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      chrome.scripting.executeScript(
-        {
-          target: { tabId: tabs[0].id },
-          func: extractFormData
-        },
-        function (results) {
-          if (chrome.runtime.lastError) {
-            setError(chrome.runtime.lastError.message)
-          }
-
-          if (results && results[0].result) {
-            setFormData(results[0].result)
-          } else {
-            setError("No form data found")
-          }
-        }
-      )
+  const chromeStorageGet = useCallback((keys: string[]) => {
+    return new Promise<Record<string, any>>((resolve) => {
+      chrome.storage.local.get(keys, resolve)
     })
-  }
+  }, [])
 
-  async function autofillWithAI() {
-    try {
-      if (!formData || !formData.questions || formData.questions.length === 0) {
-        setError("No form data found to autofill")
-        return
-      }
+  const executeScript = useCallback(
+    (func: (...args: any[]) => unknown, args?: any[]) => {
+      return new Promise((resolve, reject) => {
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+          if (!tabs[0]?.id) {
+            reject(new Error("No active tab found"))
+            return
+          }
 
-      setProcessing(true)
-      setError("")
-
-      try {
-        const generatedAnswers = await generateAnswers(formData)
-        setAnswers(generatedAnswers)
-
-        chrome.storage.local.set({
-          answers: generatedAnswers,
-          timestamp: Date.now()
+          chrome.scripting.executeScript(
+            {
+              target: { tabId: tabs[0].id },
+              func,
+              args
+            },
+            (results) => {
+              if (chrome.runtime.lastError) {
+                reject(new Error(chrome.runtime.lastError.message))
+              } else if (results && results[0]) {
+                resolve(results[0].result)
+              } else {
+                reject(new Error("No results returned"))
+              }
+            }
+          )
         })
-      } catch (aiError) {
-        console.error("Error generating or applying answers:", aiError)
-        setError(`Error: ${aiError.message || "Failed to generate answers"}`)
-      }
+      })
+    },
+    []
+  )
 
-      setProcessing(false)
-    } catch (error) {
-      console.error("Error autofilling form:", error)
-      setError(`Error autofilling form: ${error.message || "Unknown error"}`)
-      setProcessing(false)
-    }
-  }
-
-  function clearData() {
+  
+  const clearData = useCallback(() => {
     chrome.storage.local.clear(() => {
       setAnswers([])
       setError("")
     })
-  }
+  }, [])
 
+  
+  const extractData = useCallback(async () => {
+    try {
+      const result = (await executeScript(extractFormData)) as FormData
+      if (result) {
+        setFormData(result)
+        setError("")
+      } else {
+        setError("No form data found")
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to extract form data"
+      )
+    }
+  }, [executeScript])
+
+  
+  const fillForm = useCallback(
+    async (answersToFill: AnswerResponse[]) => {
+      try {
+        await executeScript(autoFillAnswer, [answersToFill])
+        console.log("Form filled successfully")
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fill form")
+      }
+    },
+    [executeScript]
+  )
+
+  
+  const checkForFormElements = useCallback(async (): Promise<boolean> => {
+    try {
+      const hasForm = await executeScript(() => {
+        return document.querySelectorAll(FORM_SELECTORS).length > 0
+      })
+      return Boolean(hasForm)
+    } catch {
+      return false
+    }
+  }, [executeScript])
+
+  
+  const autofillWithAI = useCallback(async () => {
+    if (!hasFormData) {
+      setError("No form data found to autofill")
+      return
+    }
+
+    setProcessing(true)
+    setError("")
+
+    try {
+      const generatedAnswers = await generateAnswers(formData)
+      setAnswers(generatedAnswers)
+
+      await chromeStorageSet({ answers: generatedAnswers })
+      await fillForm(generatedAnswers)
+    } catch (aiError) {
+      console.error("Error generating or applying answers:", aiError)
+      setError(
+        `Error: ${aiError instanceof Error ? aiError.message : "Failed to generate answers"}`
+      )
+    } finally {
+      setProcessing(false)
+    }
+  }, [hasFormData, formData, chromeStorageSet, fillForm])
+
+  
   useEffect(() => {
-    const isForm =
-      currentFormUrl.includes("forms.google.com") ||
-      currentFormUrl.includes("forms.office.com") ||
-      currentFormUrl.includes("forms.microsoft.com") ||
-      currentFormUrl.includes("docs.google.com/forms") ||
-      /docs\.google\.com\/.*\/forms\/.*/.test(currentFormUrl) ||
-      /docs\.google\.com\/.*\/viewform.*/.test(currentFormUrl) ||
-      /forms\.gle\//.test(currentFormUrl)
+    const initializeData = async () => {
+      try {
+        const result = await chromeStorageGet([
+          "formData",
+          "answers",
+          "currentFormUrl"
+        ])
 
-    setIsFormUrl(isForm)
-    if (isForm) {
-      extractData()
-    } else {
-      chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-        chrome.scripting.executeScript(
-          {
-            target: { tabId: tabs[0].id },
-            func: () => {
-              return (
-                document.querySelectorAll(
-                  'form, [role="form"], .freebirdFormviewerViewFormCard, .m3kCof'
-                ).length > 0
-              )
-            }
-          },
-          function (results) {
-            if (results && results[0] && results[0].result === true) {
-              setIsFormUrl(true)
-              extractData()
-            }
+        if (result.formData) setFormData(result.formData)
+        if (result.answers) setAnswers(result.answers)
+        if (result.currentFormUrl) setCurrentFormUrl(result.currentFormUrl)
+
+        
+        chrome.tabs.query(
+          { active: true, currentWindow: true },
+          async (tabs) => {
+            const url = tabs[0]?.url || ""
+            setCurrentFormUrl(url)
+            await chromeStorageSet({ currentFormUrl: url })
           }
         )
-      })
+      } catch (err) {
+        console.error("Failed to initialize data:", err)
+      }
     }
-  }, [currentFormUrl])
+
+    initializeData()
+  }, [chromeStorageGet, chromeStorageSet])
+
+  
+  useEffect(() => {
+    if (hasFormData) {
+      chromeStorageSet({ formData })
+    }
+  }, [formData, hasFormData, chromeStorageSet])
+
+  
+  useEffect(() => {
+    if (hasAnswers) {
+      chromeStorageSet({ answers })
+    }
+  }, [answers, hasAnswers, chromeStorageSet])
+
+  
+  useEffect(() => {
+    if (processing) {
+      setError("")
+    }
+  }, [processing])
+
+  
+  useEffect(() => {
+    const checkAndExtractForm = async () => {
+      if (isFormUrlValid) {
+        setIsFormUrl(true)
+        await extractData()
+      } else {
+        
+        const hasForm = await checkForFormElements()
+        if (hasForm) {
+          setIsFormUrl(true)
+          await extractData()
+        } else {
+          setIsFormUrl(false)
+        }
+      }
+    }
+
+    if (currentFormUrl) {
+      checkAndExtractForm()
+    }
+  }, [currentFormUrl, isFormUrlValid, extractData, checkForFormElements])
+
+  const isOptionSelected = useCallback(
+    (questionIndex: number, optionText: string, id: number): boolean => {
+      if (
+        !hasAnswers ||
+        !answers[questionIndex] ||
+        answers[questionIndex].answer === null
+      ) {
+        return false
+      }
+
+      const answer = answers[questionIndex].answer
+
+      if (Array.isArray(answer)) {
+        return answer.some((a: Answer) => a.id === id)
+      } else if (typeof answer === "object" && answer !== null) {
+        return (answer as Answer).id === id
+      } 
+
+      return false
+
+    },
+    [hasAnswers, answers]
+  )
+
+  
+  const getAnswerDisplayText = useCallback(
+    (questionIndex: number): string => {
+      if (
+        !hasAnswers ||
+        !answers[questionIndex] ||
+        answers[questionIndex].answer === null
+      ) {
+        return ""
+      }
+
+      const answer = answers[questionIndex].answer
+
+      if (typeof answer === "string") {
+        return answer
+      }
+
+      if (typeof answer === "object" && answer !== null) {
+        const answerObj = answer as Answer
+        return answerObj.otherText ? `${answerObj.otherText}` : ""
+      }
+
+      return ""
+    },
+    [hasAnswers, answers]
+  )
+
+  
+  const isAnswerSkipped = useCallback(
+    (questionIndex: number): boolean => {
+      if (!hasAnswers || !answers[questionIndex]) return false
+
+      const answer = answers[questionIndex].answer
+      return (
+        answer === "SKIP" ||
+        answer === null ||
+        (typeof answer === "object" &&
+          answer !== null &&
+          (answer as any).answer === "SKIP")
+      )
+    },
+    [hasAnswers, answers]
+  )
 
   return (
     <main
@@ -169,7 +331,7 @@ export default function FormieApp() {
               Formie
             </h1>
           </div>
-          {(formData.questions.length > 0 || answers.length > 0) && (
+          {(hasFormData || hasAnswers) && (
             <button
               onClick={clearData}
               className="text-xs px-4 py-2.5 rounded-full bg-dark-primary/10 text-dark-primary hover:bg-dark-primary/20 transition-all duration-200 ease-in-out border border-dark-primary/20 hover:border-dark-primary/40 font-medium">
@@ -203,7 +365,7 @@ export default function FormieApp() {
         {error && (
           <div className="text-error-500 p-6 bg-error-900/10 backdrop-blur-sm border border-error-900/20 rounded-xl mb-6 shadow-lg animate-in slide-in-from-top-2 duration-300">
             <div className="flex items-start space-x-3">
-              <span className="text-error-500 text-lg mt-0.5">⚠</span>
+              <AiFillAlert />
               <div>
                 <p className="font-semibold text-error-400 mb-1">Error</p>
                 <p className="text-sm text-error-500/90">{error}</p>
@@ -212,7 +374,7 @@ export default function FormieApp() {
           </div>
         )}
 
-        {formData && formData.questions && formData.questions.length > 0 ? (
+        {hasFormData ? (
           <div className="text-white -mx-2 mb-32 space-y-4">
             <div className="space-y-5">
               {formData.questions.map((q, i) => (
@@ -253,23 +415,16 @@ export default function FormieApp() {
                         <div className="grid gap-2">
                           {q.type === "multiple_choice"
                             ? q.options.slice(1).map((opt, j) => {
-                                // Check if this option is selected in the answers
-                                const isSelected =
-                                  answers.length > 0 &&
-                                  answers[i] &&
-                                  answers[i].answer !== null &&
-                                  (Array.isArray(answers[i].answer)
-                                    ? (answers[i].answer as Answer[]).some(
-                                        (a: Answer) => a.answer === opt.text
-                                      )
-                                    : (answers[i].answer as Answer)?.answer ===
-                                      opt.text)
+                                const isSelected = isOptionSelected(
+                                  i,
+                                  opt.text,
+                                  opt.id
+                                )
 
                                 return (
                                   <div
                                     key={j}
                                     className="flex items-center space-x-3 p-2 rounded-lg transition-colors duration-200">
-                                    {/* Radio button for multiple choice */}
                                     <div
                                       className={`w-4 h-4 aspect-square rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                                         isSelected
@@ -292,23 +447,16 @@ export default function FormieApp() {
                                 )
                               })
                             : q.options.map((opt, j) => {
-                                // Check if this option is selected in the answers
-                                const isSelected =
-                                  answers.length > 0 &&
-                                  answers[i] &&
-                                  answers[i].answer !== null &&
-                                  (Array.isArray(answers[i].answer)
-                                    ? (answers[i].answer as Answer[]).some(
-                                        (a: Answer) => a.answer === opt.text
-                                      )
-                                    : (answers[i].answer as Answer)?.answer ===
-                                      opt.text)
+                                const isSelected = isOptionSelected(
+                                  i,
+                                  opt.text,
+                                  opt.id
+                                )
 
                                 return (
                                   <div
                                     key={j}
                                     className="flex items-center space-x-3 p-2 rounded-lg transition-colors duration-200">
-                                    {/* Checkbox for checkbox questions and other multi-select types */}
                                     <div
                                       className={`w-4 h-4 aspect-square rounded border-2 flex items-center justify-center transition-all duration-200 ${
                                         isSelected
@@ -343,70 +491,44 @@ export default function FormieApp() {
                       </div>
                     )}
 
-                    {/* Show skipped status or text answers that don't have options */}
-                    {answers.length > 0 &&
-                      answers[i] &&
-                      (answers[i].answer === "SKIP" ||
-                      answers[i].answer === null ||
-                      (answers[i].answer as any)?.answer === "SKIP" ? (
-                        <div className="mt-5 p-2 px-4 bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 rounded-xl shadow-md">
-                          <div className="flex items-center space-x-3">
-                            <div>
-                              <p className="text-sm font-semibold text-orange-400">
-                                Skipped
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : answers[i].answer &&
-                        !Array.isArray(answers[i].answer) &&
-                        (answers[i].answer as Answer).otherText ? (
-                        <div className="mt-5 p-2 px-4 bg-success/10 backdrop-blur-sm border border-success/20 rounded-xl shadow-md">
-                          <div className="flex items-start space-x-3">
-                            <div className="flex-1">
-                              <p className="text-sm text-success/90 leading-relaxed">
-                                {(answers[i].answer as Answer).otherText}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        (!q.options || q.options.length === 0) && (
-                          <div className="mt-5 p-2 px-4 bg-success/10 backdrop-blur-sm border border-success/20 rounded-xl shadow-md">
-                            <div className="flex items-start space-x-3">
-                              <div className="flex-1">
-                                <p className="text-sm text-success/90 leading-relaxed">
-                                  {Array.isArray(answers[i].answer)
-                                    ? (answers[i].answer as Answer[])
-                                        .map((a) =>
-                                          a.otherText
-                                            ? `${a.answer}: ${a.otherText}`
-                                            : a.answer
-                                        )
-                                        .join(", ")
-                                    : answers[i].answer !== null
-                                      ? (() => {
-                                          const answerObj = answers[i]
-                                            .answer as Answer
-                                          return answerObj.otherText
-                                            ? `${answerObj.answer}: ${answerObj.otherText}`
-                                            : answerObj.answer
-                                        })()
-                                      : ""}
+                    {/* Show answer status */}
+                    {hasAnswers && answers[i] && (
+                      <>
+                        {isAnswerSkipped(i) ? (
+                          <div className="mt-5 p-2 px-4 bg-orange-500/10 backdrop-blur-sm border border-orange-500/20 rounded-xl shadow-md">
+                            <div className="flex items-center space-x-3">
+                              <div>
+                                <p className="text-sm font-semibold text-orange-400">
+                                  Skipped
                                 </p>
                               </div>
                             </div>
                           </div>
-                        )
-                      ))}
+                        ) : (
+                          (() => {
+                            const displayText = getAnswerDisplayText(i)
+                            return displayText ? (
+                              <div className="mt-5 p-2 px-4 bg-success/10 backdrop-blur-sm border border-success/20 rounded-xl shadow-md">
+                                <div className="flex items-start space-x-3">
+                                  <div className="flex-1">
+                                    <p className="text-sm text-success/90 leading-relaxed">
+                                      {displayText}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : null
+                          })()
+                        )}
+                      </>
+                    )}
                   </div>
                 </div>
               ))}
             </div>
           </div>
         ) : (
-          formData &&
-          formData.questions && (
+          formData && (
             <div className="text-white mt-8 text-center">
               <div className="p-8 bg-dark-surface/40 rounded-2xl border border-dark-surface/40">
                 <div className="w-16 h-16 mx-auto rounded-full bg-dark-primary/20 flex items-center justify-center mb-4">
@@ -420,28 +542,29 @@ export default function FormieApp() {
           )
         )}
 
-        <div className="w-full flex justify-center items-center p-4 sticky bottom-4">
-          <div className="w-full h-56 bg-gradient-to-t from-dark-bg via-dark-bg/95 to-transparent fixed bottom-0 left-0 pointer-events-none" />
+        <div className="w-full flex justify-center items-center p-4 gap-1 sticky bottom-4">
           <button
             onClick={autofillWithAI}
-            disabled={
-              loading ||
-              processing ||
-              formData.questions.length === 0 ||
-              !isFormUrl
-            }
-            className={`flex items-center justify-center space-x-3 py-3 px-6 rounded-full max-w-[240px] w-fit bg-gradient-to-r from-dark-primary to-dark-primary/90 hover:from-dark-primary/90 hover:to-dark-primary text-dark-bg font-bold text-base transition-all duration-300 ease-in-out shadow-xl hover:shadow-2xl transform hover:scale-105 border border-dark-primary/20 ${loading || processing || formData.questions.length === 0 || !isFormUrl ? "opacity-50 cursor-not-allowed hover:scale-100" : ""}`}>
+            disabled={processing || !hasFormData || !isFormUrl}
+            className={`${hasAnswers ? "bg-dark-primary/20 text-dark-primary backdrop-blur-xl rounded-l-3xl rounded-r-lg" : "rounded-full hover:bg-dark-primary/95 bg-dark-primary/90 text-dark-bg"} flex items-center justify-center space-x-3 py-3 px-6 w-fit  font-bold text-base transition-all duration-300 ease-in-out shadow-xl hover:shadow-2xl transform hover:scale-105 border border-dark-primary/20 ${processing || !hasFormData || !isFormUrl ? "!bg-dark-primary/60 opacity-70 cursor-not-allowed hover:scale-100" : ""}`}>
             {processing ? (
               <>
                 <div className="w-5 h-5 border-2 border-dark-bg/30 border-t-dark-bg rounded-full animate-spin"></div>
                 <span>Thinking...</span>
               </>
+            ) : hasAnswers ? (
+              <RxReload className="w-6 h-6" />
             ) : (
-              <>
-                <span>Find Answers</span>
-              </>
+              <span>Find Answers</span>
             )}
           </button>
+          {hasAnswers && (
+            <button
+              onClick={() => fillForm(answers)}
+              className="flex items-center justify-center space-x-3 backdrop-blur-xl py-3 px-6 rounded-r-3xl rounded-l-lg max-w-[240px] w-fit bg-dark-primary/90 hover:bg-dark-primary/95 text-dark-bg font-bold text-base transition-all duration-300 ease-in-out shadow-xl hover:shadow-2xl transform hover:scale-105 border border-dark-primary/20">
+              Fill Form
+            </button>
+          )}
         </div>
       </div>
     </main>

@@ -8,7 +8,7 @@ It can handle surveys, applications, or any other type of form on Google Forms. 
 - [x] **Analyzes form questions** - Formie extracts and reads through all the questions on a form
 - [x] **Generate answers** - Using Gemini, it creates appropriate responses based on the question type and context
 - [x] **Sidebar integration** - Allows to open the extension in sidebar to fill the form with ease
-- [ ] **Fill the form automatically** - Formie can fill the entire form with answers
+- [x] **Fill the form automatically** - Formie can fill the entire form with answers
 - [ ] **Personal Information** - Formie understands you with your personal information to fill such personal questions
 - [ ] **Prompt Injection** - Give user control over the answers with prompt injection
 - [ ] **Custom API key** - Formie can use the custom api key from users instead

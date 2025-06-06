@@ -1,43 +1,20 @@
 import { createGoogleGenerativeAI } from "@ai-sdk/google"
 import { generateText } from "ai"
 
+import type { FormData, FormQuestion } from "../types/Form"
 import { GOOGLE_API_KEY } from "./env"
 
-export interface FormQuestion {
-  id: number
-  text: string
-  type: string
-  required: boolean
-  options: {
-    id: number
-    text: string
-    selector?: string
-  }[]
-  image?: string
-}
-
-export interface FormData {
-  title: string
-  description: string
-  questions: FormQuestion[]
-}
-
-export interface Answer {
-  id: number
-  answer: string
-  otherText?: string
-}
 export interface AnswerResponse {
   questionId: number
-  answer: Answer | Answer[]
+  answer:
+    | { id: number; answer: string; otherText?: string }
+    | { id: number; answer: string; otherText?: string }[]
 }
 
 const googleAI = createGoogleGenerativeAI({
   apiKey: GOOGLE_API_KEY
 })
-const model = googleAI("gemini-2.5-flash-preview-04-17", {
-  useSearchGrounding: true
-})
+const model = googleAI("gemini-2.5-flash-preview-05-20")
 
 export async function generateAnswers(
   formData: FormData
@@ -51,12 +28,7 @@ export async function generateAnswers(
 
     const result = await generateText({
       model,
-      messages: [
-        {
-          role: "user",
-          content: [{ type: "text", text: prompt }]
-        }
-      ]
+      prompt
     })
 
     console.log("AI Response:", result.text)
@@ -68,8 +40,7 @@ export async function generateAnswers(
         id: q.id,
         text: q.text,
         type: q.type,
-        options: q.options,
-        hasImage: !!q.image
+        options: q.options
       }))
     )
 
@@ -104,20 +75,15 @@ Here are the questions:
 `
 
   formData.questions.forEach((question, index) => {
-    const questionCopy = { ...question }
-    if (questionCopy.image) {
-      questionCopy.text += ` [IMAGE URL: ${questionCopy.image} - analyze this image to answer the question]`
-      delete questionCopy.image
-    }
-    prompt += JSON.stringify(questionCopy, null, 2) + "\n\n"
+    prompt += JSON.stringify(question)
   })
 
   prompt += `
 Remember:
-1. Skip any personal related questions
+1. Skip any personal questions (respond with "SKIP")
 2. For multiple choice/dropdown, return {"id": optionId, "answer": "option text"}
 3. For checkbox questions, return an array of {"id": optionId, "answer": "option text"} objects
-4. For short answer or paragraph, return {"id": 1, "answer": "your text response"}
+4. For short answer or paragraph, return just the text string
 5. Use the exact option IDs and text from the provided options
 6. If you select "Other" option, add "otherText" field with your custom text: {"id": otherId, "answer": "Other", "otherText": "your custom answer"}
 7. Format your response as a JSON array with questionId and answer fields
@@ -138,35 +104,7 @@ function parseAIResponse(
       console.log("Found JSON match:", jsonMatch[0])
       const parsed = JSON.parse(jsonMatch[0])
       console.log("Successfully parsed JSON:", parsed)
-
-      // Add selectors to the parsed answers
-      return parsed.map((answer: any) => {
-        const question = questions.find((q) => q.id === answer.questionId)
-        if (!question || !answer.answer) return answer
-
-        if (Array.isArray(answer.answer)) {
-          // For checkbox answers, match each selected option with its selector
-          answer.answer = answer.answer.map((optionAnswer: any) => {
-            const matchingOption = question.options.find(
-              (opt) =>
-                opt.text === optionAnswer.answer || opt.id === optionAnswer.id
-            )
-            return {
-              ...optionAnswer,
-              selector: matchingOption?.selector || ""
-            }
-          })
-        } else {
-          // For single answers (radio, dropdown), find the matching option selector
-          const matchingOption = question.options.find(
-            (opt) =>
-              opt.text === answer.answer.answer || opt.id === answer.answer.id
-          )
-          answer.answer.selector = matchingOption?.selector || ""
-        }
-
-        return answer
-      })
+      return parsed
     }
 
     console.log("No JSON found, falling back to manual parsing")
@@ -188,16 +126,12 @@ function parseAIResponse(
           question.type === "short_answer" ||
           question.type === "paragraph"
         ) {
-          // For text questions, use the input selector
           answers.push({
             questionId: question.id,
-            answer: {
-              id: -1,
-              answer: answer,
-              otherText: answer
-            }
+            answer: { id: 0, answer: answer }
           })
         } else {
+          // For multiple choice, checkbox, and dropdown, create object format
           console.log(
             `Looking for option "${answer}" in question ${question.id} options:`,
             question.options
@@ -211,11 +145,7 @@ function parseAIResponse(
             console.log(`Found matching option:`, matchingOption)
             answers.push({
               questionId: question.id,
-              answer: {
-                id: matchingOption.id,
-                answer: matchingOption.text,
-                selector: matchingOption.selector || ""
-              }
+              answer: { id: matchingOption.id, answer: matchingOption.text }
             })
           } else {
             console.log(`No matching option found for "${answer}"`)
